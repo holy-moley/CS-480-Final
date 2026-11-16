@@ -12,6 +12,7 @@ mnist = tf.keras.datasets.mnist
 (x_train, y_train), (x_test, y_test) = mnist.load_data()
 x_train, x_test = x_train / 255.0, x_test / 255.0
 
+
 # Create a "sequential" model and add layers to it
 model = tf.keras.models.Sequential([
   tf.keras.layers.Flatten(input_shape=(28, 28)),
@@ -20,8 +21,24 @@ model = tf.keras.models.Sequential([
   tf.keras.layers.Dense(10)
 ])
 
+"""
+# Create a MobileNetV2 Model
+model = tf.keras.applications.MobileNetV2(
+    input_shape=None,
+    alpha=1.0,
+    include_top=True,
+    weights='imagenet',
+    input_tensor=None,
+    pooling=None,
+    classes=1000,
+    classifier_activation='softmax',
+    name=None
+)
+"""
+
+
 predictions = model(x_train[:1]).numpy()
-predictions
+
 
 tf.nn.softmax(predictions).numpy()
 
