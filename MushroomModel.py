@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 
 #Constant, directory to the data itself. 
-DATA_DIR=Path(__file__).resolve().parent/"assets"/"data"/"data"
+DATA_DIR=Path(__file__).resolve().parent/"assets"/"data"
 RANDOM_STATE=42
 
 #Goes through each directory in the folder and makes a list out of them. 
@@ -42,7 +42,7 @@ print("Class Count: ", len(classNames))
 trainPaths, testPaths, trainLabels, testLabels = train_test_split(
     imagePaths, 
     imageLabels, 
-    test_size=0.25, 
+    test_size=0.20, 
     random_state=RANDOM_STATE,
     stratify=imageLabels,
     )
@@ -58,8 +58,14 @@ print("Test count: ", len(testPaths))
 IMAGE_SIZE=(224,224)
 BATCH_SIZE=4
 
-def makeDataset(paths, labels, augment=False):
+def makeDataset(paths, labels, augment=False, shuffle=False):
     dataset=tf.data.Dataset.from_tensor_slices((paths,labels))
+    if shuffle:
+        dataset=dataset.shuffle(
+            buffer_size=len(paths),
+            seed=RANDOM_STATE,
+            reshuffle_each_iteration=True
+            )
 
     def loadImage (path, label):
         image = tf.io.read_file(path)
@@ -70,8 +76,8 @@ def makeDataset(paths, labels, augment=False):
             expand_animations=False,
         )
         image = tf.image.resize(image,IMAGE_SIZE)
-        #Normalizes pixels from 0-255 to 0-1. 
-        image=tf.cast(image,tf.float32) / 255.0
+        #Normalizes pixels from 0-255 to [-1,1]. 
+        image=tf.keras.applications.mobilenet_v2.preprocess_input(image)
         return image, label
 
     dataset=dataset.map(loadImage,num_parallel_calls=tf.data.AUTOTUNE)
@@ -87,12 +93,12 @@ def makeDataset(paths, labels, augment=False):
             lambda image, label: (augmentation(image),label),
             num_parallel_calls=tf.data.AUTOTUNE,
         )
-        dataset=dataset.shuffle(1000,seed=RANDOM_STATE)
+        
 
     return dataset.batch(BATCH_SIZE).prefetch(tf.data.AUTOTUNE)
 
 #Augments in initial testing actually reduced performance, but they will be kept as an option for future development. 
-trainDataset=makeDataset(trainPaths,trainLabels,augment=False)
+trainDataset=makeDataset(trainPaths,trainLabels,augment=True, shuffle=True)
 testDataset=makeDataset(testPaths,testLabels)
 
 baseModel=tf.keras.applications.MobileNetV2(
@@ -115,6 +121,6 @@ model.compile(
     metrics=["accuracy"],
 )
 
-model.fit(trainDataset)
+model.fit(trainDataset, shuffle=False)
 testLoss,testAccuracy=model.evaluate(testDataset)
 print("\n Test accuracy: ", testAccuracy)
