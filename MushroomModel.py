@@ -1,3 +1,8 @@
+import PySimpleGUI as gui
+from PIL import Image
+import io
+import os
+
 # Main libraries actually doing the ML stuff.
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
@@ -21,6 +26,51 @@ classNames=sorted(
 imagePaths=[]
 imageLabels=[]
 
+#Create GUI to import an image
+def screen():
+    image_path = None
+    column = [
+        [
+            gui.Text("Image to scan: "),
+            gui.Input(enable_events=True, key="-IMAGE_INPUT-"),
+            gui.FileBrowse(file_types=(("Image Files", "*.png;*.jpg;*.jpeg;*.gif"),)),
+        ],
+        [
+            gui.Image(size=(80,80), key="-IMAGE-"),
+        ],
+        [
+            gui.Text("",key="-IMAGE_TEXT-"),
+        ],
+        [
+            gui.Button("SCAN")
+        ]
+    ]
+    layout = [
+        [gui.Column(column, key="-IMAGE_COLUMN-")]
+    ]
+    window = gui.Window("Mushroom Identifier", layout)
+    #GUI loop to render window
+    while True:
+        event, values = window.read()
+        if event=="-IMAGE_INPUT-":
+            filename = values["-IMAGE_INPUT-"]
+            image = Image.open(filename)
+            image.thumbnail((400, 400))  # Caps max dimensions to 400x400
+
+            # Convert the image to PNG bytes so PySimpleGUI can read it
+            bio = io.BytesIO()
+            image.save(bio, format="PNG")
+
+            # Update the Image element in the window
+            window["-IMAGE-"].update(data=bio.getvalue())
+            window["-IMAGE_TEXT-"].update("IMAGE INPUT TRIGGER")
+
+        if event=="SCAN" or event == gui.WIN_CLOSED:
+            break
+    window.close()
+
+screen()
+
 #Nested for loop, looks through each class, gets all the file paths lined out. 
 #This could almost definitely be made way more efficient. 
 for classIndex, className in enumerate(classNames):
@@ -36,7 +86,7 @@ print("Image Count: ", len(imagePaths))
 print("Class Count: ", len(classNames))
 
 #I would like to do a validation set as well, but we only have four images of truffles.
-# 75/25 train/test split.  
+# 80/20 train/test split.  
 #Important: stratifies by category. 
 
 trainPaths, testPaths, trainLabels, testLabels = train_test_split(
@@ -124,3 +174,8 @@ model.compile(
 model.fit(trainDataset, shuffle=False)
 testLoss,testAccuracy=model.evaluate(testDataset)
 print("\n Test accuracy: ", testAccuracy)
+"""
+predictions = model.predict(testDataset)
+for prediction in predictions:
+    print(prediction)
+"""
